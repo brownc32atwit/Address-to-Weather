@@ -6,47 +6,49 @@ import java.net.http.*;
 import java.nio.charset.StandardCharsets;
 // import java.lang.Math.*;
 
-
 // I'll clean this up later
 public class App {
 
     public static void main(String[] args) {
 
+        // take in address from input
         Scanner s = new Scanner(System.in);
         System.out.print("Enter an address: ");
         String address = s.nextLine();
+        s.close();
 
         // I don't want to keep typing it
+        // probably don't leave in at the end
         if (address.equals("!")) {
             address = "boston logan airport";
+        } else if (address.equals("@")) {
+            // NW Florida
+            address = "550 alf coleman rd panama city beach";
         }
 
-        s.close();
-        // System.out.println(address);
-
+        // Just trust me, it has to do this
         String encodedAddress = URLEncoder.encode(address, StandardCharsets.UTF_8);
-
         String urlFormat = "https://geocode.maps.co/search?q=" + encodedAddress;
 
         // geocode from address
+        // 0 is latitude, 1 is longitude
         Double coords[] = { 0.0, 0.0 };
         geocoding(urlFormat, coords);
 
-        // TODO debug print remove later
-        // System.out.println("Lat: " + coords[0]);
-        // System.out.println("Lon: " + coords[1]);
+        // Format the URL, feed into gridpoints function, then feed into getTheWeather
+        getTheWeather(gridpoints(formatURLGridpoints(urlFormat, coords)));
 
-        // we love variable reuse
-        // setting up to get the gridpoints
-        encodedAddress = URLEncoder.encode(coords[0].toString(), StandardCharsets.UTF_8);
-        urlFormat = "https://api.weather.gov/points/" + encodedAddress + ",";
-        encodedAddress = URLEncoder.encode(coords[1].toString(), StandardCharsets.UTF_8);
-        urlFormat = urlFormat + encodedAddress;
+    }
 
-        urlFormat = gridpoints(urlFormat);
+    private static String formatURLGridpoints(String urlFormat, Double coords[]) {
+        // I just want less stuff in main honestly
+        // Same idea as before, just different API we have to access
+        String x = URLEncoder.encode(coords[0].toString(), StandardCharsets.UTF_8);
+        urlFormat = "https://api.weather.gov/points/" + x + ",";
+        x = URLEncoder.encode(coords[1].toString(), StandardCharsets.UTF_8);
+        urlFormat = urlFormat + x;
 
-        getTheWeather(urlFormat);
-
+        return urlFormat;
     }
 
     // It does what you think it does
@@ -66,15 +68,11 @@ public class App {
 
             // string that contains the full response
             String responseBody = response.body();
-            // System.out.println(responseBody);
 
             // contain the results of the latitude and longitude
-            Double lat = latlon(0, responseBody);
-            Double lon = latlon(1, responseBody);
-
             // java moment
-            returner[0] = lat;
-            returner[1] = lon;
+            returner[0] = latlon(0, responseBody);
+            returner[1] = latlon(1, responseBody);
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
@@ -103,8 +101,6 @@ public class App {
 
             returner = Double.parseDouble(result);
 
-        } else {
-            System.out.println("this thing's broken");
         }
 
         returner = Math.round(returner * 1000.0) / 1000.0;
@@ -128,18 +124,12 @@ public class App {
 
             // string that contains the full response
             String responseBody = response.body();
-            // System.out.println(responseBody);
 
             String gridX = hitTheGriddy(0, responseBody);
             String gridY = hitTheGriddy(1, responseBody);
             String gridId = hitTheGriddy(2, responseBody);
             // gridId comes back with quotes, removing them
             gridId = gridId.replace("\"", "");
-
-            // TODO temp prints please remove
-            // System.out.println("gridId: " + gridId);
-            // System.out.println("gridX: " + gridX);
-            // System.out.println("gridY: " + gridY);
 
             // https://api.weather.gov/gridpoints/{office}/{grid X},{grid Y}/forecast
 
@@ -151,16 +141,19 @@ public class App {
             encodedAddress = URLEncoder.encode(gridY.toString(), StandardCharsets.UTF_8);
             x = x + encodedAddress + "/forecast";
 
+            // Returns the formatted URL for the next request
             return x;
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
 
+        // In case you really broke it
         return "you broke it";
     }
 
     // Search and format for gridpoints
+    // I genuinely apologize for this name
     private static String hitTheGriddy(int opt, String responseBody) {
 
         String lookingFor = "empty";
@@ -183,15 +176,13 @@ public class App {
 
             int commaIndex = result.indexOf(",");
             if (commaIndex != -1) {
-                String result2 = result.substring(0, commaIndex);
-                // return Integer.parseInt(result2);
-                return result2;
+                // Return result before comma
+                return result.substring(0, commaIndex);
             }
 
-        } else {
-            System.out.println("this thing's broken");
         }
 
+        // If something really broke
         return "something broke";
     }
 
